@@ -18,6 +18,8 @@ const (
 	ImageWidth = 4000
 	// ImageHeight is the height of the picture to draw.
 	ImageHeight = 3000
+	// OutputFile is the name of the JPEG image file to output.
+	OutputFile = "output.jpg"
 )
 
 // Color palette for the Mandelbrot set.
@@ -87,10 +89,11 @@ func main() {
 	finalImage := createImage(ImageWidth, ImageHeight)
 
 	// Write the image to a file.
-	finalFile, _ := os.Create("output.jpg")
+	finalFile, _ := os.Create(OutputFile)
 	jpeg.Encode(finalFile, finalImage, &jpeg.Options{Quality: 100})
 	finalFile.Close()
 
 	// Finish timing the process by calculating how much time passed.
 	fmt.Println("Complete in", time.Since(startTime).Milliseconds(), "ms")
+	fmt.Println("Image created:", OutputFile)
 }
