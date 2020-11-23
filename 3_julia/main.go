@@ -5,6 +5,7 @@ import (
 	"image"
 	"os"
 	"runtime"
+	"sync"
 	"time"
 
 	"image/color"
@@ -74,28 +75,51 @@ func createImage(imgWidth, imgHeight int) image.Image {
 	// multithreaded, this is the only way to make this work.
 	// Also, channels are SPECIFICALLY for multithreaded work -- for
 	// single-threaded code, an array or a Queue data structure would suffice.
-	workQueue := make(chan task, imgWidth*imgHeight)
+	workQueue := make(chan task, 20)
+
+	wg := sync.WaitGroup{}
+
+	for i := 0; i < 4; i++ {
+		wg.Add(1)
+		go func() {
+			// Until we reach the channel's end, perform all the tasks that we find.
+			// This is the "consumer" part of the code and should be run on a background thread.
+			// And then, after that, copy-paste to make a total of 4 background consumer threads.
+			// We also should set up our consumers BEFORE we start the producer, so
+			// there is a consumer ready as soon as the producer creates some work.
+			for task := range workQueue {
+				doTask(painter, img, imgWidth, imgHeight, task)
+			}
+			wg.Done()
+		}()
+	}
 
 	// This is the "producer" part of the code and may or may not run on a
 	// background thread. It sets up each job to be done and then puts it in the
 	// work queue to give one or more consumers tasks to do.
-	for x := 0; x < imgWidth; x++ {
-		for y := 0; y < imgHeight; y++ {
-			workQueue <- task{x, y}
+	go func() {
+		wg.Add(1)
+		for x := 0; x < imgWidth; x++ {
+			for y := 0; y < imgHeight; y++ {
+				workQueue <- task{x, y}
+			}
 		}
-	}
+		close(workQueue)
+		wg.Done()
+	}()
 
-	close(workQueue)
+	/*
+		1. Move the consumer part of createImage() into a new thread (i.e. go func() {...}()).
+		2. Copy and paste this consumer code or call it in a loop so that 4 threads are created in total.
+		3. Create a sync.WaitGroup, and set its count to 4.
+		4. At the end of each consumer thread (just after the range loop), call Done() on the WaitGroup object.
+		5. Call Wait() on the WaitGroup object at the end of the createImage() function.
+		6. Move the consumer work above the producer code section
+		7. Remove the second parameter (imgWidth*imgHeight) from the channel's make call since we don't need such a huge channel anymore.
+		8. Build and run the code! It should draw the same image twice as fast!
+	*/
 
-	// Until we reach the channel's end, perform all the tasks that we find.
-	// This is the "consumer" part of the code and should be run on a background thread.
-	// And then, after that, copy-paste to make a total of 4 background consumer threads.
-	// We also should set up our consumers BEFORE we start the producer, so
-	// there is a consumer ready as soon as the producer creates some work.
-	for task := range workQueue {
-		doTask(painter, img, imgWidth, imgHeight, task)
-	}
-
+	wg.Wait()
 	return img
 }
 

@@ -5,6 +5,7 @@ import (
 	"image"
 	"os"
 	"runtime"
+	"sync"
 	"time"
 
 	"image/color"
@@ -58,6 +59,7 @@ func createImage(imgWidth, imgHeight int) image.Image {
 	colorPalette := createColorPalette()
 	painter := NewMandelbrotPainter(colorPalette)
 	//painter.SetCamera(imgWidth/3, imgHeight/4, 5.0) // Uncomment to draw a zoomed in part of the image!
+	wg := sync.WaitGroup{}
 
 	// 1. Split the fillInRows calls into four separate fillInRows calls -- split the workload across four calls.
 	// 2. Create a sync.WaitGroup object, and set its count to 4 (we'll make four threads later).
@@ -67,7 +69,29 @@ func createImage(imgWidth, imgHeight int) image.Image {
 	// 6. Build and run the code! It should draw the same image twice as fast!
 
 	img := image.NewRGBA(image.Rect(0, 0, imgWidth, imgHeight))
-	fillInRows(painter, img, imgWidth, imgHeight, 0, imgHeight)
+	wg.Add(4)
+
+	go func() {
+		fillInRows(painter, img, imgWidth, imgHeight, 0, imgHeight/4)
+		wg.Done()
+	}()
+
+	go func() {
+		fillInRows(painter, img, imgWidth, imgHeight, imgHeight/4, imgHeight/2)
+		wg.Done()
+	}()
+
+	go func() {
+		fillInRows(painter, img, imgWidth, imgHeight, imgHeight/2, (3*imgHeight)/4)
+		wg.Done()
+	}()
+
+	go func() {
+		fillInRows(painter, img, imgWidth, imgHeight, (3*imgHeight)/4, imgHeight)
+		wg.Done()
+	}()
+
+	wg.Wait()
 
 	return img
 }

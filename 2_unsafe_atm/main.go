@@ -12,6 +12,7 @@ const startingBalance = 500
 // A simplistic bank account. Allows you to withdraw, deposit, or
 // retrieve the account balance.
 type account struct {
+	lock    sync.Mutex
 	balance int
 }
 
@@ -26,6 +27,9 @@ func (a *account) updateBalance(balance int) {
 // Withdraw removes money from the account, but only if there is
 // enough money to cover the withdrawal.
 func (a *account) Withdraw(amt int) int {
+	a.lock.Lock()
+	defer a.lock.Unlock()
+
 	if a.balance >= amt {
 		a.updateBalance(a.balance - amt)
 	}
@@ -35,12 +39,18 @@ func (a *account) Withdraw(amt int) int {
 
 // Deposit adds money to the account.
 func (a *account) Deposit(amt int) int {
+	a.lock.Lock()
+	defer a.lock.Unlock()
+
 	a.updateBalance(a.balance + amt)
 	return a.balance
 }
 
 // Balance retrieves the account's balance.
 func (a *account) Balance() int {
+	a.lock.Lock()
+	defer a.lock.Unlock()
+
 	return a.balance
 }
 
