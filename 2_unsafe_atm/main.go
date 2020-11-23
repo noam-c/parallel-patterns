@@ -58,7 +58,7 @@ func main() {
 
 	// Create a new account
 	a := account{balance: startingBalance}
-	var wg sync.WaitGroup
+	wg := sync.WaitGroup{}
 
 	// Several account users will add and remove money from the account
 	// repeatedly. Since they always withdraw exactly what they deposit, there
